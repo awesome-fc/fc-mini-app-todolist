@@ -1,0 +1,5 @@
+{
+  "node_modules_es6_whitelist": [
+    "@alicloud/fc2"
+  ]
+}
