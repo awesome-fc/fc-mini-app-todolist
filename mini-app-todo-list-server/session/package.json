@@ -1,0 +1,16 @@
+{
+  "name": "session",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@alicloud/pop-core": "^1.7.9",
+    "alipay-sdk": "^3.0.8",
+    "uuid": "^3.3.3"
+  }
+}

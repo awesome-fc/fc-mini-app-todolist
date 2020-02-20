@@ -1,0 +1,193 @@
+ROSTemplateFormatVersion: '2015-09-01'
+Transform: 'Aliyun::Serverless-2018-04-03'
+Parameters:
+  DBInstanceName:
+    Type: String
+    Default: todo-list-db
+  LogProjectName:
+    Type: String
+    Default: todo-list-log
+  RoleNamePrefix:
+    Type: String
+    Default: todo-list
+  AppId:
+    Type: String
+Resources:
+  dbInstance:
+    Type: 'ALIYUN::OTS::Instance'
+    Properties:
+      InstanceName:
+        Ref: DBInstanceName
+  todoListTable:
+    Type: 'ALIYUN::OTS::Table'
+    DependsOn: dbInstance
+    Properties:
+      TableName: 'todo_list'
+      InstanceName:
+        Ref: DBInstanceName
+      PrimaryKey:
+        - Name: uid
+          Type: STRING
+        - Name: id
+          Type: STRING
+  sessionTable:
+    Type: 'ALIYUN::OTS::Table'
+    DependsOn: dbInstance
+    Properties:
+      TableName: 'session'
+      InstanceName:
+        Ref: DBInstanceName
+      PrimaryKey:
+        - Name: id
+          Type: STRING
+  logProject:
+    Type: 'ALIYUN::SLS::Project'
+    Properties:
+      Name:
+        Ref: LogProjectName
+  logStore:
+    Type: 'ALIYUN::SLS::Logstore'
+    DependsOn: logProject
+    Properties:
+      ProjectName:
+        Ref: LogProjectName
+      LogstoreName: 'func-logs'
+  logIndex:
+    Type: 'ALIYUN::SLS::Index'
+    DependsOn: logStore
+    Properties:
+      ProjectName:
+        Ref: LogProjectName
+      LogstoreName: 'func-logs'
+      FullTextIndex:
+        Enable: 'true'
+  serviceRole:
+    Type: 'ALIYUN::RAM::Role'
+    Properties:
+      RoleName:
+        'Fn::Sub': '${RoleNamePrefix}-service-role'
+      AssumeRolePolicyDocument:
+        Version: 1
+        Statement:
+          - Action: 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service:
+                - fc.aliyuncs.com
+  invokeRole:
+    Type: 'ALIYUN::RAM::Role'
+    Properties:
+      RoleName:
+        'Fn::Sub': '${RoleNamePrefix}-invoke-role'
+      AssumeRolePolicyDocument:
+        Version: 1
+        Statement:
+          - Action: 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              RAM:
+                - 'Fn::Sub': 'acs:ram::${ALIYUN::TenantId}:root'
+  attachPolicy1:
+    Type: 'ALIYUN::RAM::AttachPolicyToRole'
+    DependsOn: serviceRole
+    Properties:
+      RoleName:
+        'Fn::Sub': '${RoleNamePrefix}-service-role'
+      PolicyName: AliyunOTSFullAccess
+      PolicyType: System
+  attachPolicy2:
+    Type: 'ALIYUN::RAM::AttachPolicyToRole'
+    DependsOn: serviceRole
+    Properties:
+      RoleName:
+        'Fn::Sub': '${RoleNamePrefix}-service-role'
+      PolicyName: AliyunLogFullAccess
+      PolicyType: System
+  attachPolicy3:
+    Type: 'ALIYUN::RAM::AttachPolicyToRole'
+    DependsOn: serviceRole
+    Properties:
+      RoleName:
+        'Fn::Sub': '${RoleNamePrefix}-service-role'
+      PolicyName: AliyunSTSAssumeRoleAccess
+      PolicyType: System
+  attachPolicy4:
+    Type: 'ALIYUN::RAM::AttachPolicyToRole'
+    DependsOn: invokeRole
+    Properties:
+      RoleName:
+        'Fn::Sub': '${RoleNamePrefix}-invoke-role'
+      PolicyName: AliyunFCInvocationAccess
+      PolicyType: System
+  todo-list-svc:
+    Type: 'Aliyun::Serverless::Service'
+    DependsOn:
+      - dbInstance
+      - logIndex
+      - invokeRole
+    Properties:
+      Role:
+        'Fn::GetAtt':
+          - serviceRole
+          - Arn
+      InternetAccess: true
+    db:
+      Type: 'Aliyun::Serverless::Function'
+      Properties:
+        Handler: index.handler
+        Runtime: nodejs10
+        Timeout: 10
+        MemorySize: 512
+        CodeUri: ./db
+        EnvironmentVariables:
+          instanceName:
+            Ref: DBInstanceName
+          tableName: 'todo_list'
+          sessionTableName: 'session'
+    session:
+      Type: 'Aliyun::Serverless::Function'
+      Properties:
+        Handler: index.handler
+        Runtime: nodejs10
+        Timeout: 10
+        MemorySize: 512
+        CodeUri: ./session
+        EnvironmentVariables:
+          instanceName:
+            Ref: DBInstanceName
+          sessionTableName: 'session'
+          stsRoleArn:
+            'Fn::GetAtt':
+              - invokeRole
+              - Arn
+          appId:
+            Ref: AppId
+      Events:
+        httpTrigger:
+          Type: HTTP
+          Properties:
+            AuthType: ANONYMOUS
+            Methods:
+              - POST
+Outputs:
+  AccountId:
+    Value:
+      Ref: ALIYUN::TenantId
+  Region:
+    Value:
+      Ref: ALIYUN::Region
+  ServiceName:
+    Value:
+      'Fn::GetAtt':
+        - todo-list-svc
+        - ServiceName
+  SessionFunctionName:
+    Value:
+      'Fn::GetAtt':
+        - todo-list-svcsession
+        - FunctionName
+  DBFunctionName:
+    Value:
+      'Fn::GetAtt':
+        - todo-list-svcdb
+        - FunctionName
