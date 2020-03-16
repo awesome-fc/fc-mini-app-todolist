@@ -14,7 +14,7 @@ Todos用来演示如何使用小程序来实现一个简单的任务管理。
     ```
     
     * TODO LIST 客户端代码在 [mini-app-todo-list-client](https://github.com/awesome-fc/fc-mini-app-todolist/tree/master/mini-app-todo-list-client)
-    	* 修改server.js开头定义的变量，这些值会在 [服务端模板](http://gitlab.alibaba-inc.com/awesome-fc/mini-app-todo-list-server) 部署成功后自动输出：
+    	* 修改server.js开头定义的变量，这些值会在 [服务端模板](https://fc.console.aliyun.com/fc/applications/cn-shanghai/template/mini-app-todo-list-server-template#intro) 部署成功后自动输出：
     	
 |信息|说明|
 |----|----|
